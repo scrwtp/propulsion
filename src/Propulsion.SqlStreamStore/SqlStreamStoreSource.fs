@@ -40,7 +40,7 @@ type SqlStreamStoreSource =
 
             try
                 let! position =
-                    checkpointer.GetPosition { Stream = streamId; ConsumerGroup = consumerGroup }
+                    checkpointer.GetPosition(streamId, consumerGroup)
 
                 do! reader.Start(position)
             with

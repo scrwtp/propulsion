@@ -5,14 +5,6 @@ open System.Data
 open Microsoft.Data.SqlClient
 open Dapper
 
-[<Struct;>]
-[<CLIMutable>]
-type CheckpointRequest =
-    {
-        Stream           : string
-        ConsumerGroup    : string
-    }
-
 [<Struct;NoComparison>]
 [<CLIMutable>]
 type CheckpointEntry =
@@ -21,16 +13,10 @@ type CheckpointEntry =
         ConsumerGroup    : string
         Position         : Nullable<int64>
     }
-    static member FromRequest(request: CheckpointRequest, ?position: int64) =
-        {
-            Stream        = request.Stream
-            ConsumerGroup = request.ConsumerGroup
-            Position      = Option.toNullable position
-        }
 
 type ICheckpointer =
-    abstract member GetPosition: CheckpointRequest-> Async<Nullable<int64>>
-    abstract member CommitPosition: CheckpointEntry -> Async<unit>
+    abstract member GetPosition: stream: string * consumerGroup: string -> Async<Nullable<int64>>
+    abstract member CommitPosition: stream: string * consumerGroup: string * position: int64 -> Async<unit>
 
 [<RequireQualifiedAccess>]
 module SqlCheckpointer =
@@ -58,7 +44,7 @@ module SqlCheckpointer =
                 |> Async.Ignore
         }
 
-    let commitPosition (conn: IDbConnection) (entry: CheckpointEntry) =
+    let commitPosition (conn: IDbConnection) (stream: string) (consumerGroup: string) (position: int64) =
         async {
              do! conn.ExecuteAsync(
                      """UPDATE Checkpoints
@@ -68,16 +54,17 @@ module SqlCheckpointer =
                         IF @@ROWCOUNT = 0
                             INSERT INTO Checkpoints (Stream, ConsumerGroup, Position)
                             VALUES (@Stream, @ConsumerGroup, @Position)
-                        """, entry)
+                        """, { Stream = stream; ConsumerGroup = consumerGroup; Position = Nullable(position) })
                  |> Async.AwaitTaskCorrect
                  |> Async.Ignore
         }
 
-    let getPosition (conn: IDbConnection) (request: CheckpointRequest) =
+    let getPosition (conn: IDbConnection) (stream: string) (consumerGroup: string) =
         async {
             let! res =
                 conn.QueryAsync<CheckpointEntry>(
-                    """SELECT * FROM Checkpoints WHERE Stream = @Stream AND ConsumerGroup = @ConsumerGroup""", request)
+                    """SELECT * FROM Checkpoints WHERE Stream = @Stream AND ConsumerGroup = @ConsumerGroup""",
+                    { Stream = stream; ConsumerGroup = consumerGroup; Position = Nullable() })
                 |> Async.AwaitTaskCorrect
 
             match Seq.tryHead res with
@@ -96,13 +83,13 @@ type SqlCheckpointer(connString : string) =
         }
 
     interface ICheckpointer with
-        member this.GetPosition (request: CheckpointRequest) =
+        member this.GetPosition (stream: string, consumerGroup: string) =
             async {
                 use conn = SqlCheckpointer.connection connString
-                return! SqlCheckpointer.getPosition conn request
+                return! SqlCheckpointer.getPosition conn stream consumerGroup
             }
-        member this.CommitPosition (entry: CheckpointEntry) =
+        member this.CommitPosition (stream: string, consumerGroup: string, position: int64) =
             async {
                 use conn = SqlCheckpointer.connection connString
-                do! SqlCheckpointer.commitPosition conn entry
+                do! SqlCheckpointer.commitPosition conn stream consumerGroup position
             }

@@ -135,7 +135,7 @@ type StreamReader
     let commit batch =
         async {
             try
-                do! ledger.CommitPosition { Stream = streamId; ConsumerGroup = consumerGroup; Position = Nullable(batch.lastPosition) }
+                do! ledger.CommitPosition(streamId, consumerGroup, batch.lastPosition)
                 stats.UpdateCommitedPosition(batch.lastPosition)
                 logger.Debug("Committed position {position}", batch.lastPosition)
             with
