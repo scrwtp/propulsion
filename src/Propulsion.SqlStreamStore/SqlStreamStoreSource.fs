@@ -19,11 +19,11 @@ type ReaderSpec =
 type SqlStreamStoreSource =
 
     static member Run
-            (logger : Serilog.ILogger,
+            (logger: Serilog.ILogger,
              store: IStreamStore,
              checkpointer: ICheckpointer,
-             spec : ReaderSpec,
-             sink : Propulsion.ProjectorPipeline<_>,
+             spec: ReaderSpec,
+             sink: Propulsion.ProjectorPipeline<_>,
              statsInterval: TimeSpan) : Async<unit> =
 
         async {

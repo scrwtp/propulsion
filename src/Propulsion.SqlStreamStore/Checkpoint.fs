@@ -74,7 +74,7 @@ module SqlCheckpointer =
                 return Nullable()
         }
 
-type SqlCheckpointer(connString : string) =
+type SqlCheckpointer(connString: string) =
 
     member this.CreateSchemaIfNotExists() =
         async {

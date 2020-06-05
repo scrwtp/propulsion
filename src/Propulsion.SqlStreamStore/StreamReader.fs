@@ -41,7 +41,7 @@ module private Internal =
 
             let event =
                 FsCodec.Core.TimelineEvent.Create (
-                    msg.Position,
+                    int64 msg.StreamVersion,
                     msg.Type,
                     len0ToNull data,
                     len0ToNull metadata,
@@ -114,7 +114,7 @@ module private Internal =
 
 type StreamReader
     (
-        logger : ILogger,
+        logger: ILogger,
         store: IStreamStore,
         checkpointer: ICheckpointer,
         submitBatch: SubmitBatchHandler,
@@ -146,13 +146,12 @@ type StreamReader
                 let events =
                     page.Messages
                     |> Seq.map StreamMessage.intoStreamEvent
-                    |> Seq.sortBy (fun x -> x.event.Index)
                     |> Array.ofSeq
 
                 let batch =
                     {
-                        firstPosition = events.[0].event.Index
-                        lastPosition = events.[events.Length - 1].event.Index
+                        firstPosition = page.Messages.[0].Position
+                        lastPosition = page.Messages.[page.Messages.Length - 1].Position
                         messages = events
                         isEnd = page.IsEnd
                     }
