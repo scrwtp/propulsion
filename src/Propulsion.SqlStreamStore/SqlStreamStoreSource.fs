@@ -56,6 +56,6 @@ type SqlStreamStoreSource =
                 do! reader.Start(position)
             with
             | exc ->
-                logger.Error(exc, "Exception while running reader loop")
+                logger.Warning(exc, "Exception encountered while running reader, exiting loop")
                 return! Async.Raise exc
         }
