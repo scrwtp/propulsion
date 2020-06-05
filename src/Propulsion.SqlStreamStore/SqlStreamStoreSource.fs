@@ -3,17 +3,28 @@ namespace Propulsion.SqlStreamStore
 open System
 open SqlStreamStore
 
+type ReaderSpec =
+    {
+         consumerGroup: string
+         maxBatchSize: int
+         tailSleepInterval: TimeSpan
+    }
+    static member Default (consumerGroup) =
+        {
+            consumerGroup = consumerGroup
+            maxBatchSize = 100
+            tailSleepInterval = TimeSpan.FromSeconds(1.)
+        }
+
 type SqlStreamStoreSource =
 
     static member Run
             (logger : Serilog.ILogger,
              store: IStreamStore,
              checkpointer: ICheckpointer,
+             spec : ReaderSpec,
              sink : Propulsion.ProjectorPipeline<_>,
-             consumerGroup: string,
-             ?statsInterval: TimeSpan,
-             ?readerMaxBatchSize: int,
-             ?readerSleepInterval: TimeSpan) : Async<unit> =
+             statsInterval: TimeSpan) : Async<unit> =
 
         async {
             let streamId = "$all"
@@ -22,7 +33,7 @@ type SqlStreamStoreSource =
                 let instanceId = System.Guid.NewGuid()
                 logger
                     .ForContext("instanceId", string instanceId)
-                    .ForContext("consumerGroup", consumerGroup)
+                    .ForContext("consumerGroup", spec.consumerGroup)
 
             let ingester : Propulsion.Ingestion.Ingester<_,_> =
                 sink.StartIngester(logger, 0)
@@ -33,14 +44,14 @@ type SqlStreamStoreSource =
                              checkpointer,
                              ingester.Submit,
                              streamId,
-                             consumerGroup,
-                             ?maxBatchSize = readerMaxBatchSize,
-                             ?sleepInterval = readerSleepInterval,
-                             ?statsInterval = statsInterval)
+                             spec.consumerGroup,
+                             spec.maxBatchSize,
+                             spec.tailSleepInterval,
+                             statsInterval)
 
             try
                 let! position =
-                    checkpointer.GetPosition(streamId, consumerGroup)
+                    checkpointer.GetPosition(streamId, spec.consumerGroup)
 
                 do! reader.Start(position)
             with

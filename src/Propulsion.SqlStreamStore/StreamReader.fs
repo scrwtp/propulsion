@@ -51,9 +51,7 @@ module private Internal =
 
             { stream = StreamName.internalParseSafe msg.StreamId; event = event }
 
-    type Stats(logger: ILogger, ?statsInterval: TimeSpan) =
-
-        let statsInterval = defaultArg statsInterval (TimeSpan.FromSeconds(30.))
+    type Stats(logger: ILogger, statsInterval: TimeSpan) =
 
         let mutable batchFirstPosition = 0L
         let mutable batchLastPosition = 0L
@@ -122,15 +120,12 @@ type StreamReader
         submitBatch: SubmitBatchHandler,
         streamId,
         consumerGroup,
-        ?maxBatchSize: int,
-        ?sleepInterval: TimeSpan,
-        ?statsInterval: TimeSpan
+        maxBatchSize: int,
+        tailSleepInterval: TimeSpan,
+        statsInterval: TimeSpan
     ) =
 
-    let maxBatchSize = defaultArg maxBatchSize 100
-    let sleepInterval = defaultArg sleepInterval (TimeSpan.FromSeconds(5.))
-
-    let stats = Stats(logger, ?statsInterval = statsInterval)
+    let stats = Stats(logger, statsInterval)
 
     let commit batch =
         async {
@@ -209,5 +204,5 @@ type StreamReader
                 workItem <- Work.TakeNext page
 
                 if page.IsEnd then
-                    do! Async.Sleep sleepInterval
+                    do! Async.Sleep tailSleepInterval
         }
