@@ -116,7 +116,7 @@ type StreamReader
     (
         logger : ILogger,
         store: IStreamStore,
-        ledger: ICheckpointer,
+        checkpointer: ICheckpointer,
         submitBatch: SubmitBatchHandler,
         streamId,
         consumerGroup,
@@ -130,7 +130,7 @@ type StreamReader
     let commit batch =
         async {
             try
-                do! ledger.CommitPosition(streamId, consumerGroup, batch.lastPosition)
+                do! checkpointer.CommitPosition(streamId, consumerGroup, batch.lastPosition)
                 stats.UpdateCommitedPosition(batch.lastPosition)
                 logger.Debug("Committed position {position}", batch.lastPosition)
             with
