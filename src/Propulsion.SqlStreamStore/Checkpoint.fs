@@ -76,7 +76,7 @@ module SqlCheckpointer =
 
 type SqlCheckpointer(connString : string) =
 
-    member this.CreateIfNotExists() =
+    member this.CreateSchemaIfNotExists() =
         async {
             use conn = SqlCheckpointer.connection connString
             do! SqlCheckpointer.createIfNotExists conn
